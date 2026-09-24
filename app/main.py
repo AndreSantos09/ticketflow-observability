@@ -11,10 +11,12 @@ so the pool exhausts and latency/errors spike - all visible in Grafana.
 """
 import logging
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from opentelemetry import metrics, trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.psycopg import PsycopgInstrumentor
+from psycopg_pool import PoolTimeout
 from pydantic import BaseModel, Field
 
 # Telemetry must be initialised before anything is instrumented.
@@ -40,6 +42,22 @@ tickets_sold_counter = meter.create_counter(
 _leaked_connections: list = []
 
 app = FastAPI(title="TicketFlow API", version="1.0.0")
+
+
+@app.exception_handler(PoolTimeout)
+def pool_timeout_handler(request: Request, exc: PoolTimeout) -> JSONResponse:
+    """Return a proper 503 when the DB pool is exhausted.
+
+    Without this, a PoolTimeout propagates as an unhandled exception and the
+    HTTP instrumentation can't record the failing status code - so the error
+    would never show up on the metrics dashboard. Returning 503 makes the
+    incident observable (and is how a real service should behave).
+    """
+    logger.error("DB pool exhausted while handling %s: %s", request.url.path, exc)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Service temporarily unavailable (database pool exhausted)"},
+    )
 
 
 class BuyRequest(BaseModel):
