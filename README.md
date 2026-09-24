@@ -124,6 +124,10 @@ Depois, peça à IA (via Grafana MCP):
 
 O esperado é que a IA correlacione o pico de erros e latência no endpoint de compra com os logs de vazamento de conexão e conclua que o pool do banco está esgotado.
 
+![Dashboard do Grafana durante o incidente: taxa de erros 5xx próxima de 90%, latência p95 no teto e vendas zeradas](docs/images/grafana-incident.png)
+
+*Dashboard durante o incidente: os erros 5xx sobem para ~90%, a latência p95 bate no teto (timeout do pool) e as vendas caem a zero — exatamente o cenário que a IA investiga.*
+
 ---
 
 ## Estrutura

@@ -124,6 +124,10 @@ Then ask the AI (through the Grafana MCP):
 
 The AI is expected to correlate the spike in errors and latency on the purchase endpoint with the connection-leak logs and conclude that the database pool is exhausted.
 
+![Grafana dashboard during the incident: 5xx error rate near 90%, p95 latency at the ceiling, and sales dropping to zero](docs/images/grafana-incident.png)
+
+*Dashboard during the incident: 5xx errors climb to ~90%, p95 latency hits the ceiling (pool timeout), and sales flatline to zero — exactly the scenario the AI investigates.*
+
 ---
 
 ## Layout
