@@ -1,0 +1,101 @@
+groups:
+  - name: service_availability
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: probe_success{job="blackbox-http"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Service {{ $labels.instance }} is down"
+          description: "HTTP probe failed for {{ $labels.instance }} for more than 1 minute."
+
+      - alert: DatabaseDown
+        expr: probe_success{job="blackbox-tcp"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "Database {{ $labels.instance }} is unreachable"
+          description: "TCP connection to {{ $labels.instance }} has failed for more than 1 minute."
+
+      - alert: ServiceUnreachable
+        expr: probe_success{job="blackbox-icmp"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          category: network
+        annotations:
+          summary: "Service {{ $labels.instance }} is unreachable via ICMP"
+          description: "ICMP ping to {{ $labels.instance }} has failed for more than 2 minutes."
+
+      - alert: ServiceSlowResponse
+        expr: probe_duration_seconds{job="blackbox-http"} > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Service {{ $labels.instance }} is responding slowly"
+          description: "HTTP probe duration for {{ $labels.instance }} is {{ $value }}s (threshold: 5s)."
+
+  - name: infrastructure_health
+    interval: 30s
+    rules:
+      - alert: ServiceHealthCheckFailed
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: infrastructure
+        annotations:
+          summary: "{{ $labels.job }} health check failed"
+          description: "Service {{ $labels.job }} ({{ $labels.instance }}) has been unreachable for more than 1 minute."
+
+  - name: application_health
+    interval: 30s
+    rules:
+      # High error rate on the TicketFlow API (5xx responses).
+      # This fires when the leaky-connections scenario exhausts the pool.
+      - alert: TicketFlowHighErrorRate
+        expr: |
+          sum(rate(http_server_duration_milliseconds_count{http_status_code=~"5.."}[2m]))
+          /
+          sum(rate(http_server_duration_milliseconds_count[2m])) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          category: application
+        annotations:
+          summary: "TicketFlow error rate is high"
+          description: "More than 10% of requests are returning 5xx over the last 2 minutes."
+
+  - name: resource_usage
+    interval: 30s
+    rules:
+      - alert: HighMemoryUsage
+        expr: (process_resident_memory_bytes / 1024 / 1024 / 1024) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "High memory usage on {{ $labels.job }}"
+          description: "{{ $labels.job }} is using {{ $value | humanize }}GB of memory."
+
+  - name: supporting_services
+    interval: 30s
+    rules:
+      - alert: PostgreSQLDown
+        expr: probe_success{job="blackbox-tcp",instance="ticketflow-postgres:5432"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          category: database
+          service: postgresql
+        annotations:
+          summary: "PostgreSQL database is down"
+          description: "PostgreSQL at ticketflow-postgres:5432 has been unreachable for more than 1 minute."

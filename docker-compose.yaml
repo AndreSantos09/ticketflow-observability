@@ -1,0 +1,30 @@
+# Full stack: observability infrastructure + TicketFlow demo app.
+#
+#   docker compose up --build
+#
+# For infrastructure only (e.g. to run the app locally), use:
+#   docker compose -f infra/docker-compose-infra.yaml up
+include:
+  - infra/docker-compose-infra.yaml
+
+services:
+  ticketflow:
+    build:
+      context: ./app
+    hostname: ticketflow
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=9000
+      - DATABASE_URL=postgresql://ticketflow:ticketflow_dev_password@ticketflow-postgres:5432/ticketflow_app
+      - OTEL_SERVICE_NAME=ticketflow
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://opentelemetry-collector:4317
+      # Flip to "true" to enable the leaky-connections failure scenario.
+      - SCENARIO_LEAKY_CONNECTIONS=${SCENARIO_LEAKY_CONNECTIONS:-false}
+    depends_on:
+      ticketflow-postgres:
+        condition: service_healthy
+      opentelemetry-collector:
+        condition: service_started

@@ -1,0 +1,53 @@
+# Grafana-managed alert rules (provisioned).
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: TicketFlow Application Alerts
+    folder: TicketFlow
+    interval: 30s
+    rules:
+      - uid: ticketflow_high_error_rate
+        title: TicketFlow High Error Rate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              editorMode: code
+              expr: |
+                sum(rate(http_server_duration_milliseconds_count{http_status_code=~"5.."}[2m]))
+                /
+                sum(rate(http_server_duration_milliseconds_count[2m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              expression: B
+              refId: C
+              type: threshold
+              conditions:
+                - evaluator:
+                    params: [0.1, 0]
+                    type: gt
+        noDataState: OK
+        execErrState: Error
+        for: 2m
+        annotations:
+          summary: "TicketFlow error rate is high"
+          description: "More than 10% of requests are returning 5xx errors."
+        labels:
+          severity: critical
+          category: application

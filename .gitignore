@@ -1,0 +1,13 @@
+# Observability stack runtime storage
+infra/storage/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# OS / editor
+.DS_Store
+*.swp
